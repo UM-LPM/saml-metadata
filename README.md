@@ -1,8 +1,8 @@
 # saml-metadata
 
 This implementation is suitable for parsing large metadata files containing multiple IDPs and SPs as which commonly created by federations.
-It parses and creates the data structure on the fly, that way the original document is never saved.
-The parsing does not introduce a significant overhead, the document is usually parsed in the same amount of time it takes for the file to be downloaded.
+It parses the file and creates the data structure on the fly, that way the original document is never saved.
+The parsing does not introduce a significant overhead, the file is usually parsed in the same amount of time it takes for the file to be downloaded.
 The projects only dependency is the [saxes](https://www.npmjs.com/package/saxes) library.
 
 The data structure fairly closely follows the [schema](https://docs.oasis-open.org/security/saml/v2.0/saml-schema-metadata-2.0.xsd) prescribed by the SAML specification. All standard constructs referenced in the [interoperable SAML](https://kantarainitiative.github.io/SAMLprofiles/saml2int.html) are supported (the extensions are currently missing, however they might be added in the future).
