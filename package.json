@@ -1,0 +1,39 @@
+{
+  "name": "saml-metadata",
+  "version": "1.0.0",
+  "description": "Streaming SAML 2.0 metadata parser",
+  "main": "build/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --resolveJsonModule",
+    "test": "ava build/test/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UM-LPM/saml-metadata.git"
+  },
+  "keywords": [
+    "saml",
+    "federation",
+    "metadata",
+    "entitiesdescriptor"
+  ],
+  "author": {
+    "name": "Žiga Leber",
+    "email": "npm@zigaleber.com"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UM-LPM/saml-metadata/issues"
+  },
+  "homepage": "https://github.com/UM-LPM/saml-metadata#readme",
+  "dependencies": {
+    "@types/node": "^18.14.2",
+    "saxes": "^6.0.0"
+  },
+  "devDependencies": {
+    "ava": "^5.2.0",
+    "copyfiles": "^2.4.1",
+    "typescript": "^4.9.5"
+  }
+}
