@@ -1,6 +1,6 @@
 # saml-metadata
 
-This implementation is suitable for parsing large metadata files containing multiple IDPs and SPs as which commonly created by federations.
+This implementation is suitable for parsing large metadata files containing multiple IDPs and SPs which are commonly created by federations.
 It parses the file and creates the data structure on the fly, that way the original document is never saved.
 The parsing does not introduce a significant overhead, the file is usually parsed in the same amount of time it takes for the file to be downloaded.
 The projects only dependency is the [saxes](https://www.npmjs.com/package/saxes) library.
