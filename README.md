@@ -25,3 +25,6 @@ import {parser} from 'saml-metadata';
 ```
 
 The types are at the beginning of [metadata.ts](https://github.com/UM-LPM/saml-metadata/blob/master/src/metadata.ts).
+
+## License
+ISC
