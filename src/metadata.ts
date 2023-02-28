@@ -902,6 +902,7 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             if (AttributeConsumingService) {
               SPSSODescriptor!.attributeConsumingServices.push(AttributeConsumingService);
             }
+            AttributeConsumingService = undefined;
             break;
           case 'ServiceName':
             if (ServiceName) {
@@ -933,6 +934,7 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             if (ContactPerson) {
               x!.contactPersons.push(ContactPerson);
             }
+            ContactPerson = undefined;
             break;
           case 'Company':
             Company = false;
