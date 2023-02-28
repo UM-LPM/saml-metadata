@@ -19,6 +19,7 @@ Security considerations:
 ## Usage
 
 ```ts
+import https from 'node:https';
 import {parser} from 'saml-metadata';
 
  https.get("url", async (stream) => {
