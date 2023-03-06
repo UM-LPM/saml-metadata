@@ -8,6 +8,10 @@ export class ParseError extends Error {
 
 // SAML metadata
 
+interface Element {
+  validate(): boolean;
+}
+
 // <complexType name="localizedNameType">
 //     <simpleContent>
 //         <extension base="string">
@@ -22,7 +26,26 @@ export class ParseError extends Error {
 //         </extension>
 //     </simpleContent>
 // </complexType>
-export type Localized = {lang: string; content: string};
+
+export namespace Attributes {
+  export interface Localized {
+    lang: string; // required
+  }
+}
+
+export class Localized implements Element, Attributes.Localized {
+  content: string = ''; // required
+
+  lang: string; // required
+
+  constructor(attrs: Attributes.Localized) {
+    this.lang = attrs.lang;
+  }
+
+  validate(): boolean {
+    return this.content === '';
+  }
+};
 
 // <complexType name="AttributeType">
 //     <sequence>
@@ -34,11 +57,30 @@ export type Localized = {lang: string; content: string};
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
 // <element name="AttributeValue" type="anyType" nillable="true"/>
-export interface Attribute {
+export namespace Attributes {
+  export interface Attribute {
+    name: string; // required
+    nameFormat: string | null;
+    friendlyName: string | null;
+  }
+}
+
+export class Attribute implements Element, Attributes.Attribute  {
+  values: string[] = [];
+
   name: string; // required
   nameFormat: string | null;
   friendlyName: string | null;
-  values: string[];
+
+  constructor(attrs: Attributes.Attribute) {
+    this.name = attrs.name;
+    this.nameFormat = attrs.nameFormat;
+    this.friendlyName = attrs.friendlyName;
+  }
+
+  validate(): boolean {
+    return this.name !== '';
+  }
 }
 
 // <complexType name="EndpointType">
@@ -50,10 +92,29 @@ export interface Attribute {
 //     <attribute name="ResponseLocation" type="anyURI" use="optional"/>
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
-export interface Endpoint {
-  binding: string;
-  location: string;
+
+export namespace Attributes {
+  export interface Endpoint {
+    binding: string; // required
+    location: string; // required
+    responseLocation: string | null;
+  }
+}
+
+export class Endpoint implements Element, Attributes.Endpoint  {
+  binding: string; // required
+  location: string; // required
   responseLocation: string | null;
+
+  constructor(attrs: Attributes.Endpoint) {
+    this.binding = attrs.binding;
+    this.location = attrs.location;
+    this.responseLocation = attrs.responseLocation;
+  }
+
+  validate(): boolean {
+    return this.binding.length > 0 && this.location.length > 0;
+  }
 }
     
 // <complexType name="IndexedEndpointType">
@@ -64,9 +125,27 @@ export interface Endpoint {
 //         </extension>
 //     </complexContent>
 // </complexType>
-export interface IndexedEndpoint extends Endpoint {
+
+export namespace Attributes {
+  export interface IndexedEndpoint extends Attributes.Endpoint {
+    index: number;
+    isDefault: boolean | null;
+  }
+}
+
+export class IndexedEndpoint extends Endpoint implements Element, Attributes.IndexedEndpoint {
   index: number;
   isDefault: boolean | null;
+
+  constructor(attrs: Attributes.IndexedEndpoint) {
+    super(attrs);
+    this.index = attrs.index;
+    this.isDefault = attrs.isDefault;
+  }
+
+  validate(): boolean {
+    return super.validate() || this.index >= 0;
+  }
 }
 
 // <complexType name="KeyDescriptorType">
@@ -84,11 +163,27 @@ export interface IndexedEndpoint extends Endpoint {
 // </simpleType>
 // <element name="EncryptionMethod" type="xenc:EncryptionMethodType"/>
 export type KeyType = 'encryption' | 'signing';
-export interface Key {
-  certificates: string[];
+
+export namespace Attributes {
+  export interface Key {
+    use: KeyType | null;
+  }
+}
+
+export class Key implements Element, Attributes.Key  {
+  certificates: string[] = [];
   //EncryptionMethod
 
   use: KeyType | null;
+
+  constructor(attrs: Attributes.Key) {
+    this.use = attrs.use;
+  }
+
+  validate() {
+    return this.certificates.length > 0 &&
+      this.certificates.every(x => x !== '');
+  }
 }
 
 // <complexType name="EntitiesDescriptorType">
@@ -105,15 +200,35 @@ export interface Key {
 //     <attribute name="ID" type="ID" use="optional"/>
 //     <attribute name="Name" type="string" use="optional"/>
 // </complexType>
-export interface EntitiesDescriptor {
+export namespace Attributes {
+  export interface EntitiesDescriptor {
+    validUntil: string | null; // Date
+    cacheDuration: string | null; // Duration
+    // ID
+    name: string | null;
+  }
+}
+
+export class EntitiesDescriptor implements Element, Attributes.EntitiesDescriptor {
   // Signature
   // Extensions
-  entities: (EntityDescriptor | EntitiesDescriptor)[], // required
+  entities: (EntityDescriptor | EntitiesDescriptor)[] = []; // required
 
   validUntil: string | null; // Date
   cacheDuration: string | null; // Duration
   // ID
   name: string | null;
+
+  constructor(attrs: Attributes.EntitiesDescriptor) {
+    this.validUntil = attrs.validUntil;
+    this.cacheDuration = attrs.cacheDuration;
+    this.name = attrs.name;
+  }
+
+  validate(): boolean {
+    return this.entities.length > 0 &&
+      this.entities.every(x => x.validate());
+  }
 }
 
 // <complexType name="EntityDescriptorType">
@@ -141,24 +256,47 @@ export interface EntitiesDescriptor {
 //     <attribute name="ID" type="ID" use="optional"/>
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
-export interface EntityDescriptor {
-    entityID: string;
+export namespace Attributes {
+  export interface EntityDescriptor {
+    entityID: string; //required
     validUntil: string | null; // Date
     cacheDuration: string | null; // Duration
     // ID
+  }
+}
 
-    // Signature
-    // Extensions
-    // RoleDescriptor
-    // AuthnAuthorityDescriptor
-    // AttributeAuthorityDescriptor
-    // PDPDescriptor
-    // AffiliationDescriptor
-    idps: IDPSSO[];
-    sps: SPSSO[];
-    organization: Organization | null;
-    contactPersons: ContactPerson[];
-    // AdditionalMetadataLocation
+export class EntityDescriptor implements Element, Attributes.EntityDescriptor {
+  // Signature
+  // Extensions
+  // RoleDescriptor
+  // AuthnAuthorityDescriptor
+  // AttributeAuthorityDescriptor
+  // PDPDescriptor
+  // AffiliationDescriptor
+  idps: IDPSSO[] = [];
+  sps: SPSSO[] = [];
+  organization: Organization | null = null;
+  contactPersons: ContactPerson[] = [];
+  // AdditionalMetadataLocation
+
+  entityID: string; //required
+  validUntil: string | null; // Date
+  cacheDuration: string | null; // Duration
+  // ID
+
+  constructor(attrs: Attributes.EntityDescriptor) {
+    this.entityID = attrs.entityID;
+    this.validUntil = attrs.validUntil;
+    this.cacheDuration = attrs.cacheDuration;
+  }
+
+  validate(): boolean {
+    return this.entityID !== '' && 
+      this.idps.every(x => x.validate()) && 
+      this.sps.every(x => x.validate()) &&
+      (this.organization ? this.organization.validate() : true) &&
+      this.contactPersons.every(x => x.validate());
+  }
 }
 
 // <complexType name="OrganizationType">
@@ -173,11 +311,23 @@ export interface EntityDescriptor {
 // <element name="OrganizationName" type="md:localizedNameType"/>
 // <element name="OrganizationDisplayName" type="md:localizedNameType"/>
 // <element name="OrganizationURL" type="md:localizedURIType"/>
-export interface Organization {
+export namespace Attributes {
+  export interface Organization {}
+}
+
+export class Organization implements Element, Attributes.Organization {
   // Extensions
-  organizationName: Localized[];
-  organizationDisplayName: Localized[];
-  organizationURL: Localized[];
+  organizationName: Localized[] = [];
+  organizationDisplayName: Localized[] = [];
+  organizationURL: Localized[] = [];
+
+  constructor(attrs: Attributes.Organization) {}
+
+  validate(): boolean {
+    return this.organizationName.every(x => x.validate()) &&
+      this.organizationDisplayName.every(x => x.validate()) &&
+      this.organizationURL.every(x => x.validate());
+  }
 }
 
 // <simpleType name="ContactTypeType">
@@ -209,14 +359,29 @@ export type ContactType = 'technical' | 'support' | 'administrative' | 'billing'
 // <element name="SurName" type="string"/>
 // <element name="EmailAddress" type="anyURI"/>
 // <element name="TelephoneNumber" type="string"/>
-export interface ContactPerson {
+export namespace Attributes {
+  export interface ContactPerson {
+    contactType: ContactType; // required
+  }
+}
+
+export class ContactPerson implements Element, ContactPerson {
   // Extensions
-  company: string | null;
-  givenName: string | null;
-  surName: string | null;
-  emailAddresses: string[];
-  telephoneNumbers: string[];
+  company: string | null = null;
+  givenName: string | null = null;
+  surName: string | null = null;
+  emailAddresses: string[] = [];
+  telephoneNumbers: string[] = [];
+
   contactType: ContactType; // required
+
+  constructor(attrs: Attributes.ContactPerson) {
+    this.contactType = attrs.contactType;
+  }
+
+  validate() {
+    return true;
+  }
 }
 
 // <complexType name="RoleDescriptorType" abstract="true">
@@ -234,18 +399,42 @@ export interface ContactPerson {
 //     <attribute name="errorURL" type="anyURI" use="optional"/>
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
-export interface Role {
+export namespace Attributes {
+  export interface Role {
+    // ID
+    validUntil: string | null; // Date
+    cacheDuration: string | null; // Duration
+    protocolSupportEnumeration: string[];
+    errorURL: string | null;
+  }
+}
+
+export abstract class Role implements Element, Attributes.Role {
     // Signature
     // Extensions
-    keys: Key[];
-    organization: Organization | null;
-    contactPersons: ContactPerson[];
+    keys: Key[] = [];
+    organization: Organization | null = null;
+    contactPersons: ContactPerson[] = [];
 
     // ID
     validUntil: string | null; // Date
     cacheDuration: string | null; // Duration
     protocolSupportEnumeration: string[];
     errorURL: string | null;
+
+    constructor(attrs: Attributes.Role) {
+      this.validUntil = attrs.validUntil;
+      this.cacheDuration = attrs.cacheDuration;
+      this.protocolSupportEnumeration = attrs.protocolSupportEnumeration;
+      this.errorURL = attrs.errorURL;
+    }
+
+    validate(): boolean {
+      return this.keys.every(x => x.validate()) &&
+        (this.organization ? this.organization.validate() : true) &&
+        this.contactPersons.every(x => x.validate()) &&
+        this.protocolSupportEnumeration.length > 0
+    }
 }
 
 // <complexType name="SSODescriptorType" abstract="true">
@@ -264,11 +453,19 @@ export interface Role {
 // <element name="SingleLogoutService" type="md:EndpointType"/>
 // <element name="ManageNameIDService" type="md:EndpointType"/>
 // <element name="NameIDFormat" type="anyURI"/>
-export interface SSO extends Role {
+export namespace Attributes {
+  export interface SSO extends Attributes.Role {}
+}
+
+export abstract class SSO extends Role implements Element, Attributes.SSO {
   // ArtifactResolutionService
-  singleLogoutServices: Endpoint[];
+  singleLogoutServices: Endpoint[] = [];
   // ManageNameIDService
   // NameIDFormat
+
+  constructor(attrs: Attributes.SSO) {
+    super(attrs);
+  }
 }
 
 // <complexType name="IDPSSODescriptorType">
@@ -289,14 +486,25 @@ export interface SSO extends Role {
 // <element name="NameIDMappingService" type="md:EndpointType"/>
 // <element name="AssertionIDRequestService" type="md:EndpointType"/>
 // <element name="AttributeProfile" type="anyURI"/>
-export interface IDPSSO extends SSO {
-  singleSignOnServices: Endpoint[]; // required
+export namespace Attributes {
+  export interface IDPSSO extends Attributes.SSO {
+    wantAuthnRequestsSigned: boolean | null;
+  }
+}
+
+export class IDPSSO extends SSO implements Element, Attributes.IDPSSO {
+  singleSignOnServices: Endpoint[] = []; // required
   // NameIDMappingService
   // AssertionIDRequestService
   // AttributeProfile
   // Attribute
 
   wantAuthnRequestsSigned: boolean | null;
+
+  constructor(attrs: Attributes.IDPSSO) {
+    super(attrs);
+    this.wantAuthnRequestsSigned = attrs.wantAuthnRequestsSigned
+  }
 }
 
 // <complexType name="RequestedAttributeType">
@@ -306,8 +514,19 @@ export interface IDPSSO extends SSO {
 //         </extension>
 //     </complexContent>
 // </complexType>
-export interface RequestedAttribute extends Attribute {
+export namespace Attributes {
+  export interface RequestedAttribute extends Attributes.Attribute {
+    isRequired: boolean | null;
+  }
+}
+
+export class RequestedAttribute extends Attribute implements Element, Attributes.Attribute {
   isRequired: boolean | null;
+
+  constructor(attrs: Attributes.RequestedAttribute) {
+    super(attrs);
+    this.isRequired = attrs.isRequired;
+  }
 }
 
 // <complexType name="AttributeConsumingServiceType">
@@ -322,13 +541,33 @@ export interface RequestedAttribute extends Attribute {
 // <element name="ServiceName" type="md:localizedNameType"/>
 // <element name="ServiceDescription" type="md:localizedNameType"/>
 // <element name="RequestedAttribute" type="md:RequestedAttributeType"/>
-export interface AttributeConsumingService {
-  serviceName: Localized[];
-  serviceDescription: Localized[];
-  requestedAttributes: RequestedAttribute[];
+export namespace Attributes {
+  export interface AttributeConsumingService {
+    index: number;
+    isDefault: boolean | null;
+  }
+}
+
+export class AttributeConsumingService implements Element, Attributes.AttributeConsumingService {
+  serviceName: Localized[] = [];
+  serviceDescription: Localized[] = [];
+  requestedAttributes: RequestedAttribute[] = [];
 
   index: number;
   isDefault: boolean | null;
+
+  constructor(attrs: Attributes.AttributeConsumingService) {
+    this.index = attrs.index;
+    this.isDefault = attrs.isDefault;
+  }
+
+  validate(): boolean {
+    return this.serviceName.length > 0 &&
+      this.serviceName.every(x => x.validate()) &&
+      this.serviceDescription.every(x => x.validate()) &&
+      this.requestedAttributes.every(x => x.validate()) &&
+      this.index >= 0 
+  }
 }
 
 // <complexType name="SPSSODescriptorType">
@@ -345,12 +584,25 @@ export interface AttributeConsumingService {
 // </complexType>
 // <element name="AssertionConsumerService" type="md:IndexedEndpointType"/>
 // <element name="AttributeConsumingService" type="md:AttributeConsumingServiceType"/>
-export interface SPSSO extends SSO {
-  assertionConsumerServices: IndexedEndpoint[]; // required
-  attributeConsumingServices: AttributeConsumingService[];
+export namespace Attributes {
+  export interface SPSSO extends Attributes.SSO {
+    authnRequestsSigned: boolean | null;
+    wantAssertionsSigned: boolean | null;
+  }
+}
+
+export class SPSSO extends SSO implements Element, Attributes.SPSSO {
+  assertionConsumerServices: IndexedEndpoint[] = []; // required
+  attributeConsumingServices: AttributeConsumingService[] = [];
 
   authnRequestsSigned: boolean | null;
   wantAssertionsSigned: boolean | null;
+
+  constructor(attrs: Attributes.SPSSO) {
+    super(attrs);
+    this.authnRequestsSigned = attrs.authnRequestsSigned;
+    this.wantAssertionsSigned = attrs.wantAssertionsSigned;
+  }
 }
 
 export type Metadata = EntityDescriptor | EntitiesDescriptor;

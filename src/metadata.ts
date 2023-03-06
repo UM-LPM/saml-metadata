@@ -81,30 +81,30 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
   let metadata: Metadata | undefined;
   let nss: {[key: string]: string}[] = [];
 
-  const EntitiesDescriptorStack: EntitiesDescriptor[] = [];
-  let EntityDescriptor: EntityDescriptor | undefined;
-  let SPSSODescriptor: SPSSO | undefined;
-  let IDPSSODescriptor: IDPSSO | undefined;
-  let KeyDescriptor: Key | undefined;
-  let Organization: Organization | undefined;
-  let OrganizationName: Localized | undefined;
-  let OrganizationDisplayName: Localized | undefined;
-  let OrganizationURL: Localized | undefined;
-  let ContactPerson: ContactPerson | undefined;
-  let Company: boolean = false;
-  let GivenName: boolean = false;
-  let SurName: boolean = false;
-  let EmailAddress: boolean = false;
-  let TelephoneNumber: boolean = false;
-  let SingleSignOnService: Endpoint | undefined;
-  let SingleLogoutService: Endpoint | undefined;
-  let AssertionConsumerService: IndexedEndpoint | undefined;
-  let AttributeConsumingService: AttributeConsumingService | undefined;
-  let ServiceName: Localized | undefined;
-  let ServiceDescription: Localized | undefined;
-  let RequestedAttribute: RequestedAttribute | undefined;
-  let AttributeValue: boolean = false;
-  let X509Certificate: boolean = false;
+  const EntitiesDescriptorStack_: EntitiesDescriptor[] = [];
+  let EntityDescriptor_: EntityDescriptor | undefined;
+  let SPSSODescriptor_: SPSSO | undefined;
+  let IDPSSODescriptor_: IDPSSO | undefined;
+  let KeyDescriptor_: Key | undefined;
+  let Organization_: Organization | undefined;
+  let OrganizationName_: Localized | undefined;
+  let OrganizationDisplayName_: Localized | undefined;
+  let OrganizationURL_: Localized | undefined;
+  let ContactPerson_: ContactPerson | undefined;
+  let Company_: boolean = false;
+  let GivenName_: boolean = false;
+  let SurName_: boolean = false;
+  let EmailAddress_: boolean = false;
+  let TelephoneNumber_: boolean = false;
+  let SingleSignOnService_: Endpoint | undefined;
+  let SingleLogoutService_: Endpoint | undefined;
+  let AssertionConsumerService_: IndexedEndpoint | undefined;
+  let AttributeConsumingService_: AttributeConsumingService | undefined;
+  let ServiceName_: Localized | undefined;
+  let ServiceDescription_: Localized | undefined;
+  let RequestedAttribute_: RequestedAttribute | undefined;
+  let AttributeValue_: boolean = false;
+  let X509Certificate_: boolean = false;
 
   // Namespaces
   const md: string = 'urn:oasis:names:tc:SAML:2.0:metadata';
@@ -134,10 +134,6 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
         cacheDuration: opt('cacheDuration'),
         errorURL: opt('errorURL'),
         protocolSupportEnumeration: parseEnumeration(opt('protocolSupportEnumeration')),
-        organization: null,
-        contactPersons: [],
-        keys: [],
-        singleLogoutServices: [],
       };
     }
     function createEndpoint() {
@@ -150,7 +146,6 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
     function createLocalized() {
       return {
         lang: req('xml:lang'),
-        content: '',
       };
     }
 
@@ -163,184 +158,163 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
         switch (tag.local) {
           case 'EntitiesDescriptor':
             if (tags.match(p.and(p.root, p.repeat(p.tag(md, 'EntitiesDescriptor'))))) { 
-              EntitiesDescriptorStack.push({
-                entities: [],
+              EntitiesDescriptorStack_.push(new EntitiesDescriptor({
                 validUntil: opt('validUntil'),
                 cacheDuration: opt('cacheDuration'),
-                name: opt('Name')
-              });
+                name: opt('Name'),
+              }));
             }
             break;
           case 'EntityDescriptor':
             if (tags.match(p.and(p.root, p.repeat(p.tag(md, 'EntitiesDescriptor'))))) { 
-              EntityDescriptor = {
+              EntityDescriptor_ = new EntityDescriptor({
                 entityID: req('entityID'),
                 validUntil: opt('validUntil'),
                 cacheDuration: opt('cacheDuration'),
-                organization: null,
-                contactPersons: [],
-                idps: [],
-                sps: [],
-              };
+              });
             }
             break;
           case 'IDPSSODescriptor':
             if (EntityDescriptor &&
                 tags.match(p.tag(md, 'EntityDescriptor'))) {
-              IDPSSODescriptor = {
+              IDPSSODescriptor_ = new IDPSSO({
                 ...createSSO(),
                 wantAuthnRequestsSigned: parseBoolean(opt('WantAuthnRequestsSigned')),
-                singleSignOnServices: [],
-              };
+              });
             }
             break;
           case 'SPSSODescriptor':
             if (EntityDescriptor &&
                 tags.match(p.tag(md, 'EntityDescriptor'))) {
-              SPSSODescriptor = {
+              SPSSODescriptor_ = new SPSSO({
                 ...createSSO(),
                 authnRequestsSigned: parseBoolean(opt('AuthnRequestsSigned')),
                 wantAssertionsSigned: parseBoolean(opt('WantAssertionsSigned')),
-                assertionConsumerServices: [],
-                attributeConsumingServices: [],
-              };
+              });
             }
             break;
           case 'SingleLogoutService':
             if (EntityDescriptor && 
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              SingleLogoutService = createEndpoint();
+              SingleLogoutService_ = new Endpoint(createEndpoint());
             }
             break;
           case 'SingleSignOnService':
             if (EntityDescriptor && 
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'IDPSSODescriptor')))) {
-              SingleSignOnService = createEndpoint();
+              SingleSignOnService_ = new Endpoint(createEndpoint());
             }
             break;
           case 'AssertionConsumerService':
             if (EntityDescriptor && 
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'SPSSODescriptor')))) {
-              AssertionConsumerService = {
+              AssertionConsumerService_ = new IndexedEndpoint({
                 ...createEndpoint(),
                 index: parseInteger(opt('index'))!,
                 isDefault: parseBoolean(opt('isDefault')),
-              };
+              });
             }
           case 'AttributeConsumingService':
             if (EntityDescriptor && 
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'SPSSODescriptor')))) {
-              AttributeConsumingService = {
-                serviceName: [],
-                serviceDescription: [],
-                requestedAttributes: [],
+              AttributeConsumingService_ = new AttributeConsumingService({
                 index: parseInteger(opt('index'))!,
                 isDefault: parseBoolean(opt('isDefault')),
-              };
+              });
             }
             break;
           case 'ServiceName':
             if (AttributeConsumingService &&
                 tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              ServiceName = createLocalized();
+              ServiceName_ = new Localized(createLocalized());
             }
             break;
           case 'ServiceDescription':
             if (AttributeConsumingService &&
                 tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              ServiceDescription = createLocalized();
+              ServiceDescription_ = new Localized(createLocalized());
             }
             break;
           case 'RequestedAttribute':
             if (AttributeConsumingService &&
                 tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              RequestedAttribute = {
+              RequestedAttribute_ = new RequestedAttribute({
                 name: req('Name'),
                 nameFormat: opt('NameFormat'),
                 friendlyName: opt('FriendlyName'),
-                values: [],
                 isRequired: parseBoolean(opt('isRequired')),
-              };
+              });
             }
             break;
           case 'KeyDescriptor':
             if (EntityDescriptor &&
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              KeyDescriptor = {
+              KeyDescriptor_ = new Key({
                 use: parseUse(opt('use')),
-                certificates: []
-              };
+              });
             }
             break;
           case 'ContactPerson':
             if (EntityDescriptor &&
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.empty, p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              ContactPerson = {
+              ContactPerson_ = new ContactPerson({
                 contactType: parseContactType(req('contactType')),
-                company: null,
-                givenName: null,
-                surName: null,
-                emailAddresses: [],
-                telephoneNumbers: [],
-              };
+              });
             }
             break;
           case 'Company':
             if (ContactPerson &&
                 tags.match(p.tag(md, 'ContactPerson'))) {
-              Company = true;
+              Company_ = true;
             }
             break;
           case 'GivenName':
             if (ContactPerson &&
                 tags.match(p.tag(md, 'ContactPerson'))) {
-              GivenName = true;
+              GivenName_ = true;
             }
             break;
           case 'SurName':
             if (ContactPerson &&
                 tags.match(p.tag(md, 'ContactPerson'))) {
-              SurName = true;
+              SurName_ = true;
             }
             break;
           case 'EmailAddress':
             if (ContactPerson &&
                 tags.match(p.tag(md, 'ContactPerson'))) {
-              EmailAddress = true;
+              EmailAddress_ = true;
             }
             break;
           case 'TelephoneNumber':
             if (ContactPerson &&
                 tags.match(p.tag(md, 'ContactPerson'))) {
-              TelephoneNumber = true;
+              TelephoneNumber_ = true;
             }
             break;
           case 'Organization':
             if (EntityDescriptor && 
                 tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.empty, p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              Organization = {
-                organizationName: [],
-                organizationDisplayName: [],
-                organizationURL: [],
-              };
+              Organization_ = new Organization({
+              });
             }
             break;
           case 'OrganizationName':
             if (Organization &&
                 tags.match(p.tag(md, 'Organization'))) {
-              OrganizationName = createLocalized();
+              OrganizationName_ = new Localized(createLocalized());
             }
             break;
           case 'OrganizationDisplayName':
             if (Organization &&
                 tags.match(p.tag(md, 'Organization'))) {
-              OrganizationDisplayName = createLocalized();
+              OrganizationDisplayName_ = new Localized(createLocalized());
             }
             break;
           case 'OrganizationURL':
             if (Organization && 
                 tags.match(p.tag(md, 'Organization'))) {
-              OrganizationURL = createLocalized();
+              OrganizationURL_ = new Localized(createLocalized());
             }
             break;
         }
@@ -348,9 +322,9 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
       case ds:
         switch (tag.local) {
           case 'X509Certificate':
-            if (KeyDescriptor &&
+            if (KeyDescriptor_ &&
                 tags.match(p.and(p.and(p.tag(md, 'KeyDescriptor'), p.tag(ds, 'KeyInfo')), p.tag(ds, 'X509Data')))) {
-              X509Certificate = true;
+              X509Certificate_ = true;
             }
             break;
         }
@@ -360,7 +334,7 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
           case 'AttributeValue':
             if (RequestedAttribute &&
                 tags.match(p.tag(md, 'Attribute'))) {
-              AttributeValue = true;
+              AttributeValue_ = true;
             }
             break;
         }
@@ -371,30 +345,30 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
   });
 
   parser.on('text', (text: string) => {
-    if (KeyDescriptor && X509Certificate) {
-      KeyDescriptor.certificates.push(text);
-    } else if (RequestedAttribute && AttributeValue) {
-      RequestedAttribute.values.push(text);
-    } else if (ServiceName) {
-      ServiceName.content = text;
-    } else if (ServiceDescription) {
-      ServiceDescription.content = text;
-    } else if (ContactPerson && Company) {
-      ContactPerson.company = text;
-    } else if (ContactPerson && GivenName) {
-      ContactPerson.givenName = text;
-    } else if (ContactPerson && SurName) {
-      ContactPerson.surName = text;
-    } else if (ContactPerson && EmailAddress) {
-      ContactPerson.emailAddresses.push(text);
-    } else if (ContactPerson && TelephoneNumber) {
-      ContactPerson.telephoneNumbers.push(text);
-    } else if (OrganizationName) {
-      OrganizationName.content = text;
-    } else if (OrganizationDisplayName) {
-      OrganizationDisplayName.content = text;
-    } else if (OrganizationURL) {
-      OrganizationURL.content = text;
+    if (KeyDescriptor_ && X509Certificate_) {
+      KeyDescriptor_.certificates.push(text);
+    } else if (RequestedAttribute_ && AttributeValue_) {
+      RequestedAttribute_.values.push(text);
+    } else if (ServiceName_) {
+      ServiceName_.content = text;
+    } else if (ServiceDescription_) {
+      ServiceDescription_.content = text;
+    } else if (ContactPerson_ && Company_) {
+      ContactPerson_.company = text;
+    } else if (ContactPerson_ && GivenName_) {
+      ContactPerson_.givenName = text;
+    } else if (ContactPerson_ && SurName_) {
+      ContactPerson_.surName = text;
+    } else if (ContactPerson_ && EmailAddress_) {
+      ContactPerson_.emailAddresses.push(text);
+    } else if (ContactPerson_ && TelephoneNumber_) {
+      ContactPerson_.telephoneNumbers.push(text);
+    } else if (OrganizationName_) {
+      OrganizationName_.content = text;
+    } else if (OrganizationDisplayName_) {
+      OrganizationDisplayName_.content = text;
+    } else if (OrganizationURL_) {
+      OrganizationURL_.content = text;
     }
   });
 
@@ -404,145 +378,145 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
       case md:
         switch (tag.local) {
           case 'EntitiesDescriptor': {
-            const EntitiesDescriptor = EntitiesDescriptorStack.pop(); 
-            if (EntitiesDescriptorStack.length === 0) {
-              metadata = EntitiesDescriptor
+            const EntitiesDescriptor_ = EntitiesDescriptorStack_.pop(); 
+            if (EntitiesDescriptorStack_.length === 0) {
+              metadata = EntitiesDescriptor_
             } else {
-              EntitiesDescriptorStack[EntitiesDescriptorStack.length - 1].entities.push(EntitiesDescriptor!);
+              EntitiesDescriptorStack_[EntitiesDescriptorStack_.length - 1].entities.push(EntitiesDescriptor_!);
             }
             break;
           } case 'EntityDescriptor':
-            if (EntityDescriptor) {
-              if (EntitiesDescriptorStack.length === 0) {
-                metadata = EntityDescriptor
+            if (EntityDescriptor_) {
+              if (EntitiesDescriptorStack_.length === 0) {
+                metadata = EntityDescriptor_
               } else {
-                EntitiesDescriptorStack[EntitiesDescriptorStack.length - 1].entities.push(EntityDescriptor);
+                EntitiesDescriptorStack_[EntitiesDescriptorStack_.length - 1].entities.push(EntityDescriptor_);
               }
             }
-            EntityDescriptor = undefined;
+            EntityDescriptor_ = undefined;
             break;
           case 'IDPSSODescriptor':
-            if (IDPSSODescriptor) {
-              EntityDescriptor!.idps.push(IDPSSODescriptor);
+            if (IDPSSODescriptor_) {
+              EntityDescriptor_!.idps.push(IDPSSODescriptor_);
             }
-            IDPSSODescriptor = undefined;
+            IDPSSODescriptor_ = undefined;
             break;
           case 'SPSSODescriptor':
-            if (SPSSODescriptor) {
-              EntityDescriptor!.sps.push(SPSSODescriptor);
+            if (SPSSODescriptor_) {
+              EntityDescriptor_!.sps.push(SPSSODescriptor_);
             }
-            SPSSODescriptor = undefined;
+            SPSSODescriptor_ = undefined;
             break;
           case 'SingleLogoutService': {
-            const x = IDPSSODescriptor || SPSSODescriptor;
-            if (SingleLogoutService) {
-              x!.singleLogoutServices.push(SingleLogoutService);
+            const x = IDPSSODescriptor_ || SPSSODescriptor_;
+            if (SingleLogoutService_) {
+              x!.singleLogoutServices.push(SingleLogoutService_);
             }
-            SingleLogoutService = undefined;
+            SingleLogoutService_ = undefined;
             break;
           } case 'SingleSignOnService':
-            if (SingleSignOnService) {
-              IDPSSODescriptor!.singleSignOnServices.push(SingleSignOnService);
+            if (SingleSignOnService_) {
+              IDPSSODescriptor_!.singleSignOnServices.push(SingleSignOnService_);
             }
-            SingleSignOnService = undefined;
+            SingleSignOnService_ = undefined;
             break;
           case 'AssertionConsumerService':
-            if (AssertionConsumerService) {
-              SPSSODescriptor!.assertionConsumerServices.push(AssertionConsumerService);
+            if (AssertionConsumerService_) {
+              SPSSODescriptor_!.assertionConsumerServices.push(AssertionConsumerService_);
             }
-            AssertionConsumerService = undefined;
+            AssertionConsumerService_ = undefined;
             break;
           case 'AttributeConsumingService':
-            if (AttributeConsumingService) {
-              SPSSODescriptor!.attributeConsumingServices.push(AttributeConsumingService);
+            if (AttributeConsumingService_) {
+              SPSSODescriptor_!.attributeConsumingServices.push(AttributeConsumingService_);
             }
-            AttributeConsumingService = undefined;
+            AttributeConsumingService_ = undefined;
             break;
           case 'ServiceName':
-            if (ServiceName) {
-              AttributeConsumingService!.serviceName.push(ServiceName);
+            if (ServiceName_) {
+              AttributeConsumingService_!.serviceName.push(ServiceName_);
             }
-            ServiceName = undefined;
+            ServiceName_ = undefined;
             break;
           case 'ServiceDescription':
-            if (ServiceDescription) {
-              AttributeConsumingService!.serviceDescription.push(ServiceDescription);
+            if (ServiceDescription_) {
+              AttributeConsumingService_!.serviceDescription.push(ServiceDescription_);
             }
-            ServiceDescription = undefined;
+            ServiceDescription_ = undefined;
             break;
           case 'RequestedAttribute':
-            if (RequestedAttribute) {
-              AttributeConsumingService!.requestedAttributes.push(RequestedAttribute);
+            if (RequestedAttribute_) {
+              AttributeConsumingService_!.requestedAttributes.push(RequestedAttribute_);
             }
-            RequestedAttribute = undefined;
+            RequestedAttribute_ = undefined;
             break;
           case 'KeyDescriptor': {
-            const x = IDPSSODescriptor || SPSSODescriptor;
-            if (KeyDescriptor) {
-              x!.keys.push(KeyDescriptor);
+            const x = IDPSSODescriptor_ || SPSSODescriptor_;
+            if (KeyDescriptor_) {
+              x!.keys.push(KeyDescriptor_);
             }
-            KeyDescriptor = undefined;
+            KeyDescriptor_ = undefined;
             break;
           } case 'ContactPerson':
-            const x = EntityDescriptor || IDPSSODescriptor || SPSSODescriptor;
-            if (ContactPerson) {
-              x!.contactPersons.push(ContactPerson);
+            const x = EntityDescriptor_ || IDPSSODescriptor_ || SPSSODescriptor_;
+            if (ContactPerson_) {
+              x!.contactPersons.push(ContactPerson_);
             }
-            ContactPerson = undefined;
+            ContactPerson_ = undefined;
             break;
           case 'Company':
-            Company = false;
+            Company_ = false;
             break;
           case 'GivenName':
-            GivenName = false;
+            GivenName_ = false;
             break;
           case 'SurName':
-            SurName = false;
+            SurName_ = false;
             break;
           case 'EmailAddress':
-            EmailAddress = false;
+            EmailAddress_ = false;
             break;
           case 'TelephoneNumber':
-            TelephoneNumber = false;
+            TelephoneNumber_ = false;
             break;
           case 'Organization': {
-            const x = EntityDescriptor || IDPSSODescriptor || SPSSODescriptor;
-            if (Organization) {
-              x!.organization = Organization;
+            const x = EntityDescriptor_ || IDPSSODescriptor_ || SPSSODescriptor_;
+            if (Organization_) {
+              x!.organization = Organization_;
             }
-            Organization = undefined;
+            Organization_ = undefined;
             break;
           } case 'OrganizationName':
-            if (OrganizationName) {
-              Organization!.organizationName.push(OrganizationName);
+            if (OrganizationName_) {
+              Organization_!.organizationName.push(OrganizationName_);
             }
-            OrganizationName = undefined;
+            OrganizationName_ = undefined;
             break;
           case 'OrganizationDisplayName':
-            if (OrganizationDisplayName) {
-              Organization!.organizationDisplayName.push(OrganizationDisplayName);
+            if (OrganizationDisplayName_) {
+              Organization_!.organizationDisplayName.push(OrganizationDisplayName_);
             }
-            OrganizationDisplayName = undefined;
+            OrganizationDisplayName_ = undefined;
             break;
           case 'OrganizationURL':
-            if (OrganizationURL) {
-              Organization!.organizationURL.push(OrganizationURL);
+            if (OrganizationURL_) {
+              Organization_!.organizationURL.push(OrganizationURL_);
             }
-            OrganizationURL = undefined;
+            OrganizationURL_ = undefined;
             break;
         }
         break;
       case ds:
         switch (tag.local) {
           case 'X509Certificate':
-            X509Certificate = false;
+            X509Certificate_ = false;
             break;
         }
         break;
       case saml:
         switch (tag.local) {
           case 'AttributeValue':
-            AttributeValue = false;
+            AttributeValue_ = false;
             break;
         }
         break;
