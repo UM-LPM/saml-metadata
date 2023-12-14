@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "ava build/test/index.js"
+    "test": "node --test build/test/index.js"
   },
   "repository": {
     "type": "git",
