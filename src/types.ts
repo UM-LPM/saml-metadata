@@ -57,6 +57,7 @@ export class Localized implements Element, Attributes.Localized {
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
 // <element name="AttributeValue" type="anyType" nillable="true"/>
+
 export namespace Attributes {
   export interface Attribute {
     name: string; // required
@@ -116,7 +117,7 @@ export class Endpoint implements Element, Attributes.Endpoint  {
     return this.binding.length > 0 && this.location.length > 0;
   }
 }
-    
+
 // <complexType name="IndexedEndpointType">
 //     <complexContent>
 //         <extension base="md:EndpointType">
@@ -162,6 +163,7 @@ export class IndexedEndpoint extends Endpoint implements Element, Attributes.Ind
 //     </restriction>
 // </simpleType>
 // <element name="EncryptionMethod" type="xenc:EncryptionMethodType"/>
+
 export type KeyType = 'encryption' | 'signing';
 
 export namespace Attributes {
@@ -200,6 +202,7 @@ export class Key implements Element, Attributes.Key  {
 //     <attribute name="ID" type="ID" use="optional"/>
 //     <attribute name="Name" type="string" use="optional"/>
 // </complexType>
+
 export namespace Attributes {
   export interface EntitiesDescriptor {
     validUntil: string | null; // Date
@@ -256,6 +259,7 @@ export class EntitiesDescriptor implements Element, Attributes.EntitiesDescripto
 //     <attribute name="ID" type="ID" use="optional"/>
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
+
 export namespace Attributes {
   export interface EntityDescriptor {
     entityID: string; //required
@@ -311,6 +315,7 @@ export class EntityDescriptor implements Element, Attributes.EntityDescriptor {
 // <element name="OrganizationName" type="md:localizedNameType"/>
 // <element name="OrganizationDisplayName" type="md:localizedNameType"/>
 // <element name="OrganizationURL" type="md:localizedURIType"/>
+
 export namespace Attributes {
   export interface Organization {}
 }
@@ -339,6 +344,7 @@ export class Organization implements Element, Attributes.Organization {
 //         <enumeration value="other"/>
 //     </restriction>
 // </simpleType>
+
 export type ContactType = 'technical' | 'support' | 'administrative' | 'billing' | 'other';
 
 // <element name="ContactPerson" type="md:ContactType"/>
@@ -359,13 +365,14 @@ export type ContactType = 'technical' | 'support' | 'administrative' | 'billing'
 // <element name="SurName" type="string"/>
 // <element name="EmailAddress" type="anyURI"/>
 // <element name="TelephoneNumber" type="string"/>
+
 export namespace Attributes {
   export interface ContactPerson {
     contactType: ContactType; // required
   }
 }
 
-export class ContactPerson implements Element, ContactPerson {
+export class ContactPerson implements Element, Attributes.ContactPerson {
   // Extensions
   company: string | null = null;
   givenName: string | null = null;
@@ -399,6 +406,7 @@ export class ContactPerson implements Element, ContactPerson {
 //     <attribute name="errorURL" type="anyURI" use="optional"/>
 //     <anyAttribute namespace="##other" processContents="lax"/>
 // </complexType>
+
 export namespace Attributes {
   export interface Role {
     // ID
@@ -453,6 +461,7 @@ export abstract class Role implements Element, Attributes.Role {
 // <element name="SingleLogoutService" type="md:EndpointType"/>
 // <element name="ManageNameIDService" type="md:EndpointType"/>
 // <element name="NameIDFormat" type="anyURI"/>
+
 export namespace Attributes {
   export interface SSO extends Attributes.Role {}
 }
@@ -486,6 +495,7 @@ export abstract class SSO extends Role implements Element, Attributes.SSO {
 // <element name="NameIDMappingService" type="md:EndpointType"/>
 // <element name="AssertionIDRequestService" type="md:EndpointType"/>
 // <element name="AttributeProfile" type="anyURI"/>
+
 export namespace Attributes {
   export interface IDPSSO extends Attributes.SSO {
     wantAuthnRequestsSigned: boolean | null;
@@ -514,13 +524,14 @@ export class IDPSSO extends SSO implements Element, Attributes.IDPSSO {
 //         </extension>
 //     </complexContent>
 // </complexType>
+
 export namespace Attributes {
   export interface RequestedAttribute extends Attributes.Attribute {
     isRequired: boolean | null;
   }
 }
 
-export class RequestedAttribute extends Attribute implements Element, Attributes.Attribute {
+export class RequestedAttribute extends Attribute implements Element, Attributes.RequestedAttribute {
   isRequired: boolean | null;
 
   constructor(attrs: Attributes.RequestedAttribute) {
@@ -541,6 +552,7 @@ export class RequestedAttribute extends Attribute implements Element, Attributes
 // <element name="ServiceName" type="md:localizedNameType"/>
 // <element name="ServiceDescription" type="md:localizedNameType"/>
 // <element name="RequestedAttribute" type="md:RequestedAttributeType"/>
+
 export namespace Attributes {
   export interface AttributeConsumingService {
     index: number;
@@ -584,6 +596,7 @@ export class AttributeConsumingService implements Element, Attributes.AttributeC
 // </complexType>
 // <element name="AssertionConsumerService" type="md:IndexedEndpointType"/>
 // <element name="AttributeConsumingService" type="md:AttributeConsumingServiceType"/>
+
 export namespace Attributes {
   export interface SPSSO extends Attributes.SSO {
     authnRequestsSigned: boolean | null;

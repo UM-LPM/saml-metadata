@@ -1,34 +1,14 @@
 import {Stream, Readable} from 'node:stream';
 import sax from 'saxes';
 
-import {
-  ParseError,
-  Localized,
-  Attribute,
-  Endpoint,
-  IndexedEndpoint,
-  KeyType,
-  Key,
-  EntitiesDescriptor,
-  EntityDescriptor,
-  Organization,
-  ContactType,
-  ContactPerson,
-  Role,
-  IDPSSO,
-  RequestedAttribute,
-  AttributeConsumingService,
-  SPSSO,
-  Metadata
-} from './types.js';
-import * as p from './path.js';
+import * as t from './types.js';
 
 function parseBoolean(s: string | null): boolean | null {
   switch(s) {
     case null: return null;
     case 'true': return true;
     case 'false': return false;
-    default: throw new ParseError(`Boolean expected: "${s}"`)
+    default: throw new t.ParseError(`Boolean expected: "${s}"`)
   }
 }
 
@@ -38,19 +18,19 @@ function parseInteger(s: string | null): number | null {
   }
   const n = parseInt(s, 10);
   if (isNaN(n)) {
-    throw new ParseError(`Integer expected: "${s}"`);
+    throw new t.ParseError(`Integer expected: "${s}"`);
   } else {
     return n;
   }
 }
 
-function parseUse(s: string | null): KeyType | null {
+function parseUse(s: string | null): t.KeyType | null {
   switch(s) {
     case null: return null;
     case 'encryption':
     case 'signing':
-      return s as KeyType;
-    default: throw new ParseError(`Invalid key type: "${s}"`);
+      return s as t.KeyType;
+    default: throw new t.ParseError(`Invalid key type: "${s}"`);
   }
 }
 
@@ -61,49 +41,92 @@ function parseEnumeration(s: string | null): string[] {
   return s.split(' ');
 }
 
-function parseContactType(s: string): ContactType {
+function parseContactType(s: string): t.ContactType {
   switch(s) {
     case 'technical':
     case 'support':
     case 'administrative':
     case 'billing':
     case 'other':
-      return s as ContactType;
-    default: throw new ParseError(`Invalid contact type: "${s}"`);
+      return s as t.ContactType;
+    default: throw new t.ParseError(`Invalid contact type: "${s}"`);
   }
 }
 
-export default async function(stream: Readable): Promise<Metadata | undefined> {
+class Tag {
+  ns: string | null;
+  local: string;
+
+  constructor(ns: string | null, local: string) {
+    this.ns = ns;
+    this.local = local;
+  }
+
+  match(ns: string | null, local: string) {
+    return this.ns === ns && this.local === local;
+  }
+}
+
+export class Stack {
+  tags: Tag[] = [];
+
+  push(ns: string | null, local: string) {
+    this.tags.push(new Tag(ns, local));
+  }
+
+  pop(ns_: string | null, local_: string) {
+    const tag = this.tags.pop();
+    if (tag === undefined) {
+      throw new t.ParseError('Stack empty'); 
+    }
+    if (!tag.match(ns_, local_)) {
+      throw new t.ParseError(`Unexpected tag ${tag}`); 
+    }
+  }
+
+  root(): boolean {
+    return this.tags.length === 0;
+  }
+
+  match(ns: string | null, local: string): boolean {
+    return this.tags[this.tags.length - 1].match(ns, local);
+  }
+}
+
+export default async function(stream: Readable): Promise<t.Metadata | undefined> {
 
   const parser = new sax.SaxesParser({xmlns: true});
 
-  const tags: p.Stack = new p.Stack();
-  let metadata: Metadata | undefined;
+  let stack: Stack = new Stack();
+
+  let metadata: t.Metadata | undefined;
   let nss: {[key: string]: string}[] = [];
 
-  const EntitiesDescriptorStack_: EntitiesDescriptor[] = [];
-  let EntityDescriptor_: EntityDescriptor | undefined;
-  let SPSSODescriptor_: SPSSO | undefined;
-  let IDPSSODescriptor_: IDPSSO | undefined;
-  let KeyDescriptor_: Key | undefined;
-  let Organization_: Organization | undefined;
-  let OrganizationName_: Localized | undefined;
-  let OrganizationDisplayName_: Localized | undefined;
-  let OrganizationURL_: Localized | undefined;
-  let ContactPerson_: ContactPerson | undefined;
+  const EntitiesDescriptorStack_: t.EntitiesDescriptor[] = [];
+  let EntityDescriptor_: t.EntityDescriptor | undefined;
+  let SPSSODescriptor_: t.SPSSO | undefined;
+  let IDPSSODescriptor_: t.IDPSSO | undefined;
+  let KeyDescriptor_: t.Key | undefined;
+  let Organization_: t.Organization | undefined;
+  let OrganizationName_: t.Localized | undefined;
+  let OrganizationDisplayName_: t.Localized | undefined;
+  let OrganizationURL_: t.Localized | undefined;
+  let ContactPerson_: t.ContactPerson | undefined;
   let Company_: boolean = false;
   let GivenName_: boolean = false;
   let SurName_: boolean = false;
   let EmailAddress_: boolean = false;
   let TelephoneNumber_: boolean = false;
-  let SingleSignOnService_: Endpoint | undefined;
-  let SingleLogoutService_: Endpoint | undefined;
-  let AssertionConsumerService_: IndexedEndpoint | undefined;
-  let AttributeConsumingService_: AttributeConsumingService | undefined;
-  let ServiceName_: Localized | undefined;
-  let ServiceDescription_: Localized | undefined;
-  let RequestedAttribute_: RequestedAttribute | undefined;
+  let SingleSignOnService_: t.Endpoint | undefined;
+  let SingleLogoutService_: t.Endpoint | undefined;
+  let AssertionConsumerService_: t.IndexedEndpoint | undefined;
+  let AttributeConsumingService_: t.AttributeConsumingService | undefined;
+  let ServiceName_: t.Localized | undefined;
+  let ServiceDescription_: t.Localized | undefined;
+  let RequestedAttribute_: t.RequestedAttribute | undefined;
   let AttributeValue_: boolean = false;
+  let KeyInfo_: boolean = false;
+  let X509Data_: boolean = false;
   let X509Certificate_: boolean = false;
 
   // Namespaces
@@ -125,7 +148,7 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
       if (attribute) {
         return attribute.value;
       } else {
-        throw new ParseError(`The attribute "${name}" is required!`);
+        throw new t.ParseError(`The attribute "${name}" is required!`);
       }
     }
     function createSSO() {
@@ -157,8 +180,8 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
       case md:
         switch (tag.local) {
           case 'EntitiesDescriptor':
-            if (tags.match(p.and(p.root, p.repeat(p.tag(md, 'EntitiesDescriptor'))))) { 
-              EntitiesDescriptorStack_.push(new EntitiesDescriptor({
+            if (stack.root() || stack.match(md, 'EntitiesDescriptor')) { 
+              EntitiesDescriptorStack_.push(new t.EntitiesDescriptor({
                 validUntil: opt('validUntil'),
                 cacheDuration: opt('cacheDuration'),
                 name: opt('Name'),
@@ -166,8 +189,8 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             }
             break;
           case 'EntityDescriptor':
-            if (tags.match(p.and(p.root, p.repeat(p.tag(md, 'EntitiesDescriptor'))))) { 
-              EntityDescriptor_ = new EntityDescriptor({
+            if (stack.root() || stack.match(md, 'EntitiesDescriptor')) { 
+              EntityDescriptor_ = new t.EntityDescriptor({
                 entityID: req('entityID'),
                 validUntil: opt('validUntil'),
                 cacheDuration: opt('cacheDuration'),
@@ -175,18 +198,18 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             }
             break;
           case 'IDPSSODescriptor':
-            if (EntityDescriptor &&
-                tags.match(p.tag(md, 'EntityDescriptor'))) {
-              IDPSSODescriptor_ = new IDPSSO({
+            if (EntityDescriptor_ &&
+                stack.match(md, 'EntityDescriptor')) {
+              IDPSSODescriptor_ = new t.IDPSSO({
                 ...createSSO(),
                 wantAuthnRequestsSigned: parseBoolean(opt('WantAuthnRequestsSigned')),
               });
             }
             break;
           case 'SPSSODescriptor':
-            if (EntityDescriptor &&
-                tags.match(p.tag(md, 'EntityDescriptor'))) {
-              SPSSODescriptor_ = new SPSSO({
+            if (EntityDescriptor_ &&
+                stack.match(md, 'EntityDescriptor')) {
+              SPSSODescriptor_ = new t.SPSSO({
                 ...createSSO(),
                 authnRequestsSigned: parseBoolean(opt('AuthnRequestsSigned')),
                 wantAssertionsSigned: parseBoolean(opt('WantAssertionsSigned')),
@@ -194,51 +217,51 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             }
             break;
           case 'SingleLogoutService':
-            if (EntityDescriptor && 
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              SingleLogoutService_ = new Endpoint(createEndpoint());
+            if ((IDPSSODescriptor_ || SPSSODescriptor_) &&
+                (stack.match(md, 'IDPSSODescriptor') || stack.match(md, 'SPSSODescriptor'))) {
+              SingleLogoutService_ = new t.Endpoint(createEndpoint());
             }
             break;
           case 'SingleSignOnService':
-            if (EntityDescriptor && 
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'IDPSSODescriptor')))) {
-              SingleSignOnService_ = new Endpoint(createEndpoint());
+            if (IDPSSODescriptor_ &&
+                stack.match(md, 'IDPSSODescriptor')) {
+              SingleSignOnService_ = new t.Endpoint(createEndpoint());
             }
             break;
           case 'AssertionConsumerService':
-            if (EntityDescriptor && 
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'SPSSODescriptor')))) {
-              AssertionConsumerService_ = new IndexedEndpoint({
+            if (SPSSODescriptor_  &&
+                stack.match(md, 'SPSSODescriptor')) {
+              AssertionConsumerService_ = new t.IndexedEndpoint({
                 ...createEndpoint(),
                 index: parseInteger(opt('index'))!,
                 isDefault: parseBoolean(opt('isDefault')),
               });
             }
+            break;
           case 'AttributeConsumingService':
-            if (EntityDescriptor && 
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.tag(md, 'SPSSODescriptor')))) {
-              AttributeConsumingService_ = new AttributeConsumingService({
+            if (SPSSODescriptor_ &&
+                stack.match(md, 'SPSSODescriptor')) {
+              AttributeConsumingService_ = new t.AttributeConsumingService({
                 index: parseInteger(opt('index'))!,
                 isDefault: parseBoolean(opt('isDefault')),
               });
             }
             break;
           case 'ServiceName':
-            if (AttributeConsumingService &&
-                tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              ServiceName_ = new Localized(createLocalized());
+            if (AttributeConsumingService_ &&
+                stack.match(md, 'AttributeConsumingService')) {
+              ServiceName_ = new t.Localized(createLocalized());
             }
             break;
           case 'ServiceDescription':
-            if (AttributeConsumingService &&
-                tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              ServiceDescription_ = new Localized(createLocalized());
+            if (AttributeConsumingService_ &&
+                stack.match(md, 'AttributeConsumingService')) {
+              ServiceDescription_ = new t.Localized(createLocalized());
             }
             break;
           case 'RequestedAttribute':
-            if (AttributeConsumingService &&
-                tags.match(p.tag(md, 'AttributeConsumingService'))) {
-              RequestedAttribute_ = new RequestedAttribute({
+            if (AttributeConsumingService_ && stack.match(md, 'AttributeConsumingService')) {
+              RequestedAttribute_ = new t.RequestedAttribute({
                 name: req('Name'),
                 nameFormat: opt('NameFormat'),
                 friendlyName: opt('FriendlyName'),
@@ -247,83 +270,95 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
             }
             break;
           case 'KeyDescriptor':
-            if (EntityDescriptor &&
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              KeyDescriptor_ = new Key({
+            if ((IDPSSODescriptor_ || SPSSODescriptor_) &&
+                (stack.match(md, 'IDPSSODescriptor') || stack.match(md, 'SPSSODescriptor'))) {
+              KeyDescriptor_ = new t.Key({
                 use: parseUse(opt('use')),
               });
             }
             break;
           case 'ContactPerson':
-            if (EntityDescriptor &&
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.empty, p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              ContactPerson_ = new ContactPerson({
+            if ((EntityDescriptor_ || IDPSSODescriptor_ || SPSSODescriptor_) &&
+                (stack.match(md, 'EntityDescriptor') || stack.match(md, 'IDPSSODescriptor') || stack.match(md, 'SPSSODescriptor'))) {
+              ContactPerson_ = new t.ContactPerson({
                 contactType: parseContactType(req('contactType')),
               });
             }
             break;
           case 'Company':
-            if (ContactPerson &&
-                tags.match(p.tag(md, 'ContactPerson'))) {
+            if (ContactPerson_ &&
+                stack.match(md, 'ContactPerson')) {
               Company_ = true;
             }
             break;
           case 'GivenName':
-            if (ContactPerson &&
-                tags.match(p.tag(md, 'ContactPerson'))) {
+            if (ContactPerson_ &&
+                stack.match(md, 'ContactPerson')) {
               GivenName_ = true;
             }
             break;
           case 'SurName':
-            if (ContactPerson &&
-                tags.match(p.tag(md, 'ContactPerson'))) {
+            if (ContactPerson_ &&
+                stack.match(md, 'ContactPerson')) {
               SurName_ = true;
             }
             break;
           case 'EmailAddress':
-            if (ContactPerson &&
-                tags.match(p.tag(md, 'ContactPerson'))) {
+            if (ContactPerson_ &&
+                stack.match(md, 'ContactPerson')) {
               EmailAddress_ = true;
             }
             break;
           case 'TelephoneNumber':
-            if (ContactPerson &&
-                tags.match(p.tag(md, 'ContactPerson'))) {
+            if (ContactPerson_ &&
+                stack.match(md, 'ContactPerson')) {
               TelephoneNumber_ = true;
             }
             break;
           case 'Organization':
-            if (EntityDescriptor && 
-                tags.match(p.and(p.tag(md, 'EntityDescriptor'), p.or([p.empty, p.tag(md, 'IDPSSODescriptor'), p.tag(md, 'SPSSODescriptor')])))) {
-              Organization_ = new Organization({
+            if ((EntityDescriptor_ || IDPSSODescriptor_ || SPSSODescriptor_) &&
+                (stack.match(md, 'EntityDescriptor') || stack.match(md, 'IDPSSODescriptor') || stack.match(md, 'SPSSODescriptor'))) {
+              Organization_ = new t.Organization({
               });
             }
             break;
           case 'OrganizationName':
-            if (Organization &&
-                tags.match(p.tag(md, 'Organization'))) {
-              OrganizationName_ = new Localized(createLocalized());
+            if (Organization_ &&
+                stack.match(md, 'Organization')) {
+              OrganizationName_ = new t.Localized(createLocalized());
             }
             break;
           case 'OrganizationDisplayName':
-            if (Organization &&
-                tags.match(p.tag(md, 'Organization'))) {
-              OrganizationDisplayName_ = new Localized(createLocalized());
+            if (Organization_ &&
+                stack.match(md, 'Organization')) {
+              OrganizationDisplayName_ = new t.Localized(createLocalized());
             }
             break;
           case 'OrganizationURL':
-            if (Organization && 
-                tags.match(p.tag(md, 'Organization'))) {
-              OrganizationURL_ = new Localized(createLocalized());
+            if (Organization_ &&
+                stack.match(md, 'Organization')) {
+              OrganizationURL_ = new t.Localized(createLocalized());
             }
             break;
         }
         break;
       case ds:
         switch (tag.local) {
+          case 'KeyInfo':
+            if (KeyDescriptor_
+                && stack.match(md, 'KeyDescriptor')) {
+              KeyInfo_ = true;
+            }
+            break;
+          case 'X509Data':
+            if (KeyInfo_
+                && stack.match(ds, 'KeyInfo')) {
+              X509Data_ = true;
+            }
+            break;
           case 'X509Certificate':
-            if (KeyDescriptor_ &&
-                tags.match(p.and(p.and(p.tag(md, 'KeyDescriptor'), p.tag(ds, 'KeyInfo')), p.tag(ds, 'X509Data')))) {
+            if (X509Data_
+                && stack.match(ds, 'X509Data')) {
               X509Certificate_ = true;
             }
             break;
@@ -332,19 +367,18 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
       case saml:
         switch (tag.local) {
           case 'AttributeValue':
-            if (RequestedAttribute &&
-                tags.match(p.tag(md, 'Attribute'))) {
+            if (RequestedAttribute_
+                && stack.match(md, 'Attribute')) {
               AttributeValue_ = true;
             }
             break;
         }
         break;
     }
-
-    tags.push(ns, tag.local);
+    stack.push(ns, tag.local);
   });
 
-  parser.on('text', (text: string) => {
+  parser.on('text', (text: string) => {
     if (KeyDescriptor_ && X509Certificate_) {
       KeyDescriptor_.certificates.push(text);
     } else if (RequestedAttribute_ && AttributeValue_) {
@@ -508,6 +542,12 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
         break;
       case ds:
         switch (tag.local) {
+          case 'KeyInfo':
+            KeyInfo_ = false;
+            break;
+          case 'X509Data':
+            X509Data_ = false;
+            break;
           case 'X509Certificate':
             X509Certificate_ = false;
             break;
@@ -521,10 +561,10 @@ export default async function(stream: Readable): Promise<Metadata | undefined> {
         }
         break;
     }
-    tags.pop(ns, tag.local);
+    stack.pop(ns, tag.local);
     nss.pop();
   });
-  const end: Promise<Metadata | undefined> = new Promise((resolve, reject) => {
+  const end: Promise<t.Metadata | undefined> = new Promise((resolve, reject) => {
     parser.on('end', () => resolve(metadata));
     parser.on('error', (e) => reject(e));
   });
