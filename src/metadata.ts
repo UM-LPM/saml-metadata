@@ -412,7 +412,7 @@ export default async function(stream: Readable): Promise<t.Metadata | undefined>
       case md:
         switch (tag.local) {
           case 'EntitiesDescriptor': {
-            const EntitiesDescriptor_ = EntitiesDescriptorStack_.pop(); 
+            const EntitiesDescriptor_ = EntitiesDescriptorStack_.pop();
             if (EntitiesDescriptorStack_.length === 0) {
               metadata = EntitiesDescriptor_
             } else {
