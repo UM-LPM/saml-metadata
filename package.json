@@ -39,6 +39,6 @@
   },
   "devDependencies": {
     "class-transformer": "^0.5.1",
-    "typescript": "^4.9.5"
+    "typescript": "^5.3.3"
   }
 }
