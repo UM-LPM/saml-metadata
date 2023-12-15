@@ -1,6 +1,7 @@
 # saml-metadata
 
 [![CI](https://github.com/UM-LPM/saml-metadata/actions/workflows/node.js.yml/badge.svg)](https://github.com/UM-LPM/saml-metadata/actions/workflows/node.js.yml)
+[![npm version](https://badge.fury.io/js/saml-metadata.svg)](https://badge.fury.io/js/saml-metadata)
 
 This is a streaming SAML metadata parser.
 It is sutable for parsing large metadata files (multiple MBs) containing multiple IDPs and SPs, which are commonly used by federations.
