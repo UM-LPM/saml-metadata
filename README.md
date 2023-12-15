@@ -23,10 +23,11 @@ Security considerations:
 import https from 'node:https';
 import {parser} from 'saml-metadata';
 
- https.get("url", async (stream) => {
-   const metadata = await parser(stream);
-   metadata.validate();
- });
+https.get(address, (stream) => {
+  void (async () => {
+     const metadata = await parser(stream);
+  })();
+});
 ```
 
 The types are in [types.ts](https://github.com/UM-LPM/saml-metadata/blob/master/src/types.ts).
