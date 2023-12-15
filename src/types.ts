@@ -2,14 +2,13 @@
 export class ParseError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "ParseParseError";
+    this.name = "ParseError";
   }
 }
 
 // SAML metadata
 
 interface Element {
-  validate(): boolean;
 }
 
 // <complexType name="localizedNameType">
@@ -34,16 +33,11 @@ export namespace Attributes {
 }
 
 export class Localized implements Element, Attributes.Localized {
-  content: string = ''; // required
-
+  content: string | undefined; // required
   lang: string; // required
 
   constructor(attrs: Attributes.Localized) {
     this.lang = attrs.lang;
-  }
-
-  validate(): boolean {
-    return this.content === '';
   }
 };
 
@@ -78,10 +72,6 @@ export class Attribute implements Element, Attributes.Attribute  {
     this.nameFormat = attrs.nameFormat;
     this.friendlyName = attrs.friendlyName;
   }
-
-  validate(): boolean {
-    return this.name !== '';
-  }
 }
 
 // <complexType name="EndpointType">
@@ -112,10 +102,6 @@ export class Endpoint implements Element, Attributes.Endpoint  {
     this.location = attrs.location;
     this.responseLocation = attrs.responseLocation;
   }
-
-  validate(): boolean {
-    return this.binding.length > 0 && this.location.length > 0;
-  }
 }
 
 // <complexType name="IndexedEndpointType">
@@ -142,10 +128,6 @@ export class IndexedEndpoint extends Endpoint implements Element, Attributes.Ind
     super(attrs);
     this.index = attrs.index;
     this.isDefault = attrs.isDefault;
-  }
-
-  validate(): boolean {
-    return super.validate() || this.index >= 0;
   }
 }
 
@@ -227,11 +209,6 @@ export class EntitiesDescriptor implements Element, Attributes.EntitiesDescripto
     this.cacheDuration = attrs.cacheDuration;
     this.name = attrs.name;
   }
-
-  validate(): boolean {
-    return this.entities.length > 0 &&
-      this.entities.every(x => x.validate());
-  }
 }
 
 // <complexType name="EntityDescriptorType">
@@ -293,14 +270,6 @@ export class EntityDescriptor implements Element, Attributes.EntityDescriptor {
     this.validUntil = attrs.validUntil;
     this.cacheDuration = attrs.cacheDuration;
   }
-
-  validate(): boolean {
-    return this.entityID !== '' && 
-      this.idps.every(x => x.validate()) && 
-      this.sps.every(x => x.validate()) &&
-      (this.organization ? this.organization.validate() : true) &&
-      this.contactPersons.every(x => x.validate());
-  }
 }
 
 // <complexType name="OrganizationType">
@@ -327,12 +296,6 @@ export class Organization implements Element, Attributes.Organization {
   organizationURL: Localized[] = [];
 
   constructor(attrs: Attributes.Organization) {}
-
-  validate(): boolean {
-    return this.organizationName.every(x => x.validate()) &&
-      this.organizationDisplayName.every(x => x.validate()) &&
-      this.organizationURL.every(x => x.validate());
-  }
 }
 
 // <simpleType name="ContactTypeType">
@@ -435,13 +398,6 @@ export abstract class Role implements Element, Attributes.Role {
       this.cacheDuration = attrs.cacheDuration;
       this.protocolSupportEnumeration = attrs.protocolSupportEnumeration;
       this.errorURL = attrs.errorURL;
-    }
-
-    validate(): boolean {
-      return this.keys.every(x => x.validate()) &&
-        (this.organization ? this.organization.validate() : true) &&
-        this.contactPersons.every(x => x.validate()) &&
-        this.protocolSupportEnumeration.length > 0
     }
 }
 
@@ -571,14 +527,6 @@ export class AttributeConsumingService implements Element, Attributes.AttributeC
   constructor(attrs: Attributes.AttributeConsumingService) {
     this.index = attrs.index;
     this.isDefault = attrs.isDefault;
-  }
-
-  validate(): boolean {
-    return this.serviceName.length > 0 &&
-      this.serviceName.every(x => x.validate()) &&
-      this.serviceDescription.every(x => x.validate()) &&
-      this.requestedAttributes.every(x => x.validate()) &&
-      this.index >= 0 
   }
 }
 
